@@ -6,7 +6,10 @@ Make it run without errors but you cannot change the location of the `let` state
 
 ```js
 function doAsyncTask(cb) {
-  cb();
+  process.nextTick(() =>{ cb();})
+
+  //or use
+  //setImmediate(() => {cb();})
 }
 doAsyncTask(_ => console.log(message));
 
@@ -21,19 +24,28 @@ The below code swallows the error and doesn't pass it up the chain, make it pass
 const fs = require("fs");
 
 function readFileThenDo(next) {
-  fs.readFile("./blah.nofile", (err, data) => {
-    next(data);
-  });
+    fs.readFile("./blah.nofile", (err, data) => {
+        if (err) next(err);
+        else next(null, data);
+    });
 }
 
-readFileThenDo(data => {
-  console.log(data);
+readFileThenDo((err, data) => {
+    if (err) {
+        console.error(err);
+    } else {
+        console.log(data);
+    }
 });
 ```
 
 # Question 3
 
 Instead of passing it up the stack throw it instead and try to catch it later on.
+
+Answer:
+Trick question, Cant use try catch with call backs, as the catch will immediately be executed, instead of waiting for the asynchronous block to finish executing
+
 
 ```js
 const fs = require("fs");
@@ -47,5 +59,7 @@ function readFileThenDo(next) {
 // Hint use try..catch
 readFileThenDo(data => {
   console.log(data);
-});
+}).catch(err =>{
+  error
+})
 ```
