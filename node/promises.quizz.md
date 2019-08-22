@@ -6,13 +6,40 @@ Create a promise version of the async readFile function
 const fs = require("fs");
 
 function readFile(filename, encoding) {
-  fs.readFile(filename, encoding, (err, data) => {
-    //TODO
-  });
+    return new Promise((resolve, reject) => {
+        fs.readFile(filename, encoding, (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
 }
-readFile("./files/demofile.txt", "utf-8")
-    .then(...)
-});
+readFile("./files/demofile.txt", "utf-8").then(
+    data => {
+        console.log(data);
+    },
+    err => {
+        console.error("Failed to read file", err);
+    }
+);
+
+//or use promisify to make apromise out of a error first call back functions
+const fs = require("fs");
+const util = require("util");
+const readFile = util.promisify(fs.readFile);
+
+readFile("./files/demofile.txt", "utf-8").then(
+    data => {
+        console.log(data);
+    },
+    err => {
+        console.error(err);
+    }
+);
+// });
+
 ```
 
 # Question 2
@@ -24,32 +51,125 @@ const fs = require("fs");
 const zlib = require("zlib");
 
 function zlibPromise(data) {
-  zlib.gzip(data, (error, result) => {
-    //TODO
-  });
+    return new Promise((resolve, reject) => {
+        zlib.gzip(data, (err, result) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
 }
 
 function readFile(filename, encoding) {
-  return new Promise((resolve, reject) => {
-    fs.readFile(filename, encoding, (err, data) => {
-      if (err) reject(err);
-      resolve(data);
+    return new Promise((resolve, reject) => {
+        fs.readFile(filename, encoding, (err, data) => {
+            if (err) reject(err);
+            resolve(data);
+        });
     });
-  });
 }
 
-readFile("./files/demofile.txt", "utf-8")
-    .then(...) // --> Load it then zip it and then print it to screen
-});
+readFile("./files/demofile.txt", "utf-8").then(
+    data => {
+        zlibPromise(data).then(
+            res => console.log(res),
+            err => console.error(err)
+        );
+    },
+    err => console.error(err)
+); // --> Load it then zip it and then print it to screen
 ```
 
 # Question 3
 
 Convert the previous code so that it now chains the promise as well.
+```js
+const fs = require("fs");
+const zlib = require("zlib");
+
+function zlibPromise(data) {
+    return new Promise((resolve, reject) => {
+        zlib.gzip(data, (err, result) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+}
+
+function readFile(filename, encoding) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filename, encoding, (err, data) => {
+            if (err) reject(err);
+            resolve(data);
+        });
+    });
+}
+
+readFile("./files/demofile.txt", "utf-8")
+    .then(
+        data => {
+            return zlibPromise(data);
+        },
+        err => {
+            console.error(err);
+        }
+    )
+    .then(
+        data => {
+            console.log(data);
+        },
+        err => {
+            console.error(err);
+        }
+    );
+//Or you can promisify the zlib.gzip function and just return that call
+```
 
 # Question 4
 
 Convert the previous code so that it now handles errors using the catch handler
+```js
+const fs = require("fs");
+const zlib = require("zlib");
+
+function zlibPromise(data) {
+    return new Promise((resolve, reject) => {
+        zlib.gzip(data, (err, result) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+}
+
+function readFile(filename, encoding) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filename, encoding, (err, data) => {
+            if (err) reject(err);
+            resolve(data);
+        });
+    });
+}
+
+readFile("./files/demofile.txt", "utf-8")
+    .then(data => {
+        return zlibPromise(data);
+    })
+    .then(data => {
+        console.log(data);
+    })
+    .catch(err => {
+        console.error(err);
+    });
+```
+
 
 # Question 5
 
@@ -60,7 +180,13 @@ function readFileFake(sleep) {
   return new Promise(resolve => setTimeout(resolve, sleep));
 }
 
-readFileFake(5000); // This resolves a promise after 5 seconds, pretend it's a large file being read from disk
+function killFileRead(sleep){
+  return new Promise((_, reject) => setTimeout(reject, sleep, "timeout"));
+}
+
+Promise.race([readFileFake(5000), killFileRead(1000)])
+    .then((data) => console.log(data))
+    .catch((err) => console.log(err)); // This resolves a promise after 5 seconds, pretend it's a large file being read from disk
 ```
 
 # Question 6
@@ -82,8 +208,19 @@ function timeout(sleep) {
   return new Promise((resolve, reject) => setTimeout(reject, sleep, "timeout"));
 }
 
-Promise.race( [publish(), timeout(3000)])
-  .then(...)
-  .then(...)
-  .catch(...);
+Promise.race( [publish(), timeout(1000)])
+  .then( res => {
+      if (res.status === 403) {
+        return authenticate();
+      }
+    })
+  .then( _ => console.log("Published"))
+  .catch( err =>{
+    if(err == "timeout"){
+      console.log("Request Time out")
+    }
+    else{
+      console.error(err)
+    }
+  });
 ```
