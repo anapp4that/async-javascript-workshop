@@ -7,8 +7,12 @@ const util = require("util");
 const fs = require("fs");
 const readFile = util.promisify(fs.readFile);
 
-function* fileLoader(files) {...}
-
+function* fileLoader(files) {
+  for(let i = 0; i < files.length; i++){
+    readFile(files[i])
+    console.log(yield)
+  }
+},
 (async () => {
   for await (let contents of fileLoader([
     "./files/demofile.txt",
